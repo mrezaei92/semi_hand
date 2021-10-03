@@ -165,7 +165,9 @@ def main_worker(gpu, ngpus_per_node, args, current_node_GPU_counts):
     ########################## Main Loop ##########################
     
     Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,optimizer,device,fp16_scaler, scheduler)
-
+    model_name="last.pt"
+    data={"model":(model.module.state_dict() if not args.paralelization_type=="N" else model.state_dict()) , "args":args,"optimizer":optimizer.state_dict()}
+    torch.save(data, os.path.join(args.checkpoints_dir,model_name ))
     
     print('Finished Training')
 
