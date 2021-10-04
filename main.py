@@ -165,7 +165,7 @@ def main_worker(gpu, ngpus_per_node, args, current_node_GPU_counts):
     ########################## Main Loop ##########################
     
     Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,optimizer,device,fp16_scaler, scheduler)
-    model_name="last.pt"
+    model_name="savedModel_E{}.pt".format(args.num_epoch)
     data={"model":(model.module.state_dict() if not args.paralelization_type=="N" else model.state_dict()) , "args":args,"optimizer":optimizer.state_dict()}
     torch.save(data, os.path.join(args.checkpoints_dir,model_name ))
     
@@ -188,7 +188,7 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,op
     lrs=[]
     
     for epoch in range(args.num_epoch):
-        running_loss , psudo_loss= [],[]
+        running_loss , psudo_loss, Unlabled_Loss, true_strongloss = [],[], [], []
 
     
         if args.paralelization_type=="DDP":
@@ -259,6 +259,8 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,op
 
                     val=torch.max(torch.norm(strong_-gt2Dcrop_strong.cuda(device, non_blocking=True),dim=-1))
 
+                    true_strong= lossFunction(gt2Dcrop_strong, out_strong)
+
 
                     if val>1e-4:
                         f= open("diog.txt","a+")
@@ -288,8 +290,12 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,op
                 out_weak = Normalize_depth(out_weak,sizes=cube_size_strong.cuda(device, non_blocking=True),coms=com,add_com=False)
                 psudo_labele_loss = lossFunction(out_weak, gt2Dcrop_weak.cuda(device, non_blocking=True))
 
+
+
             running_loss.append(loss.item())
             psudo_loss.append(psudo_labele_loss.item())
+            Unlabled_Loss.append(unlabeled_loss.item())
+            true_strongloss.append(true_strong.item())
 
             if i%200==0:
                 message=f"average loss: {loss.item():.5f}  | time: {(time.time()-start_time_iter):.1f} Secs\n"
@@ -300,7 +306,7 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,op
                 f.close()
 
 
-        message=f"End of epoch: {epoch+1} , Mean Labeled Loss: {np.mean(running_loss):.5f}, Mean Psudo_labelLoss: {np.mean(psudo_loss):.5f}, STD Psudo_labelLoss: {np.std(psudo_loss):.5f}, Total Time: {(time.time()-start_time_iter2)/60:.2f} mins\n"
+        message=f"Epoch: {epoch+1} , Labeled Loss: {np.mean(running_loss):.3f}, Unlabled Loss: {np.mean(Unlabled_Loss):.3f}, Psudo_labelLoss: {np.mean(psudo_loss):.3f}, STD Psudo_labelLoss: {np.std(psudo_loss):.3f}, TrueStrong: {np.mean(true_strongloss):.3f}, Total Time: {(time.time()-start_time_iter2)/60:.2f} mins\n"
         print(message)
         f= open("log.txt","a+")
         f.write(message+"\r\n")

@@ -433,7 +433,7 @@ class HourglassNet(nn.Module):
                 self.relu,
             )
 
-    def forward(self, x):
+    def forward(self, x , return_heatmap=False):
         out = []
         outD= []
         x = self.conv1(x)
@@ -487,6 +487,9 @@ class HourglassNet(nn.Module):
         if self.num_stacks==1:
             uv=UV0*2
             uvd=torch.cat([uv,D0[...,None]],dim=-1)
+
+            if return_heatmap:
+                return uvd, h0
             return uvd
         else:
             h1=self.soft1(out[1])
@@ -538,6 +541,6 @@ def model_builder(model_name,num_joints):
     elif model_name == "resnet50":
         return ResNet(BasicBlock, [3, 4, 6, 3],num_joints=num_joints)
     elif model_name == "hourglass_1":
-        return HourglassNet(Bottleneck1,num_stacks=1,num_blocks=4, num_classes=num_joints,BN=True,num_G=16)
+        return HourglassNet(Bottleneck1,num_stacks=1,num_blocks=2, num_classes=num_joints,BN=True,num_G=16)
     else:
         raise NotImplementedError

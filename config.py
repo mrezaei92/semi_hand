@@ -21,7 +21,7 @@ def get_args_parser():
 
     parser.add_argument('--randseed',default=32, type=int,help="the seed for generating a random subset of data")
 
-    parser.add_argument('--subsetLength',default=18000, type=int,help="the size of the random subset of data (if -1, use the entire dataset)")
+    parser.add_argument('--subsetLength',default=7200, type=int,help="the size of the random subset of data (if -1, use the entire dataset)")
     
     parser.add_argument('--drop_joint_num',default=0, type=int,help="The number of joints that are randomly dropped for each frame")
 
@@ -74,7 +74,7 @@ def get_args_parser():
 
     parser.add_argument('--epoch',default=100,dest="num_epoch",type=int)
 
-    parser.add_argument('--batch_size',default=8,type=int,dest="batch_size")
+    parser.add_argument('--batch_size',default=16,type=int,dest="batch_size")
 
     parser.add_argument('--model_path',type=str, help="the address where the model is saved for resuming the training")
 
