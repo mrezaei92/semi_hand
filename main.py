@@ -347,11 +347,11 @@ def DATA_Getters(args):
         np.random.seed(e)
     
     base_parameters=dict(basepath=args.datasetpath, train=True, cropSize=image_size, 
-        doJitterRotation=False, doAddWhiteNoise=args.doAddWhiteNoise, sigmaNoise=args.sigmaNoise,
-        rotationAngleRange=[-45.0, 45.0], comJitter=False, RandDotPercentage=False,
-        indeces=labeled_subset, cropSize3D=cubic_size, do_norm_zero_one=False, 
-        random_seed=args.randseed,drop_joint_num=args.drop_joint_num,center_refined=args.center_refined,
-        horizontal_flip=False, scale_aug=False)
+            doJitterRotation=args.RotAugment, doAddWhiteNoise=args.doAddWhiteNoise, sigmaNoise=args.sigmaNoise,
+            rotationAngleRange=[-45.0, 45.0], comJitter=args.comjitter, RandDotPercentage=args.RandDotPercentage,
+            indeces=labeled_subset, cropSize3D=cubic_size, do_norm_zero_one=False, 
+            random_seed=args.randseed,drop_joint_num=args.drop_joint_num,center_refined=args.center_refined,
+            horizontal_flip=args.horizontal_flip, scale_aug=args.scale_aug)
 
 
     if args.dataset=="nyu":
