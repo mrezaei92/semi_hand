@@ -534,13 +534,16 @@ def GetValuesY(dimension=64,num_channel=14):
 
 
 def model_builder(model_name,num_joints):
-    assert model_name in ["resnet18","resnet50","hourglass_1"]
+    assert model_name in ["resnet18","resnet50","hglass1","hglass1_small"]
 
     if model_name == "resnet18":
         return ResNet(BasicBlock, [2, 2, 2, 2],num_joints=num_joints)
     elif model_name == "resnet50":
         return ResNet(BasicBlock, [3, 4, 6, 3],num_joints=num_joints)
-    elif model_name == "hourglass_1":
+    elif model_name == "hglass1":
+        return HourglassNet(Bottleneck1,num_stacks=1,num_blocks=4, num_classes=num_joints,BN=True,num_G=16)
+    elif model_name == "hglass1_small":
         return HourglassNet(Bottleneck1,num_stacks=1,num_blocks=2, num_classes=num_joints,BN=True,num_G=16)
+
     else:
         raise NotImplementedError
