@@ -2,6 +2,19 @@ import torch
 import os
 import numpy as np
 
+
+def loss_masked(preds,target,mask,lossFunc):
+
+    #preds, targets: both tensor of shape (B,num_joint,k)
+    # mask a tensor of shape (B,num_joint,1)
+
+    joint_dim=preds.shape[2]
+    distance = lossFunc(preds,target) # B,num_joints,k
+    distance=distance*mask
+    
+    return torch.sum(distance)/(torch.sum(mask)*joint_dim)
+
+
 def interleave(x, size):
     s = list(x.shape)
     return x.reshape([-1, size] + s[1:]).transpose(0, 1).reshape([-1] + s[1:])
@@ -33,13 +46,13 @@ def compute_MeanSTD(x):
     k=h0.shape[1]
 
     dim=x.shape[2]
-    y,x=torch.meshgrid(torch.arange(0,dim),torch.arange(0,dim))
+    y,x=torch.meshgrid(torch.arange(0,dim),torch.arange(0,dim)).to(x.device)
     
 
     Xs=x.flatten()[None,None,...]#.to(device)
     Ys=y.flatten()[None,None,...]#to(device)
-    Xs.requires_grad=False
-    Ys.requires_grad=False
+    #Xs.requires_grad=False
+    #Ys.requires_grad=False
 
 
     X0=torch.mul(h0.view(num_batch,k,-1),Xs)
