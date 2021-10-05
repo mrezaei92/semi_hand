@@ -316,7 +316,7 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,op
         scheduler.step()
 
         # Save the model
-        if ( args.paralelization_type!="DDP" or (args.paralelization_type=="DDP" and rank % current_node_GPU_counts == 0) ) and epoch%10==0 and epoch!=0:
+        if ( args.paralelization_type!="DDP" or (args.paralelization_type=="DDP" and rank % current_node_GPU_counts == 0) ) and epoch%2==0 and epoch!=0:
             model_name="savedModel_E{}.pt".format(epoch+1)
             data={"model":(model.module.state_dict() if not args.paralelization_type=="N" else model.state_dict()) , "args":args,"optimizer":optimizer.state_dict()}
             torch.save(data, os.path.join(args.checkpoints_dir,model_name ))
