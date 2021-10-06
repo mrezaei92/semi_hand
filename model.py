@@ -234,7 +234,7 @@ class AdaptiveSpatialSoftmaxLayer(nn.Module):
         if train:
             #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
             #print(device)
-            self.spread=nn.Parameter(torch.ones(1,num_channel,1))#.to(device))
+            self.spread=torch.ones(1,num_channel,1)#.to(device))
             # self.spread.requires_grad=True
         else:
             self.spread=spread#.to(device)
@@ -245,6 +245,7 @@ class AdaptiveSpatialSoftmaxLayer(nn.Module):
 
     def forward(self, x):
         # the input is a tensor of shape (batch,num_channel,height,width)
+        self.spread = self.spread.to(x.device)
         SpacialSoftmax = nn.Softmax(dim=2)
         num_batch=x.shape[0]
         num_channel=x.shape[1]
@@ -354,8 +355,6 @@ class HourglassNet(nn.Module):
             self.soft1=AdaptiveSpatialSoftmaxLayer(train=True,num_channel=num_classes)#.cuda()#to(device)
         self.Xs=GetValuesX()
         self.Ys=GetValuesY()
-        self.Xs.requires_grad=False
-        self.Ys.requires_grad=False
 
         self.BN=BN
         self.num_G=num_G
@@ -434,6 +433,8 @@ class HourglassNet(nn.Module):
             )
 
     def forward(self, x , return_heatmap=False):
+        self.Xs = self.Xs.to(x.device)
+        self.Ys = self.Ys.to(x.device)
         out = []
         outD= []
         x = self.conv1(x)
@@ -522,14 +523,14 @@ def GetValuesX(dimension=64,num_channel=14):
 
     #Xs=np.repeat(Xs,num_channel,axis=0)
     Xs=np.float32(np.expand_dims(Xs,axis=0))
-    return nn.Parameter(torch.from_numpy(Xs))
+    return torch.from_numpy(Xs)
 
 def GetValuesY(dimension=64,num_channel=14):
     res=np.zeros((1,dimension*dimension))
     for i in range(dimension):
         res[0,(i*dimension):((i+1)*dimension)]=i
     res=np.float32( np.expand_dims(res,axis=0) )
-    return nn.Parameter(torch.from_numpy(res))
+    return torch.from_numpy(res)
 
 
 
