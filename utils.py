@@ -11,8 +11,12 @@ def loss_masked(preds,target,mask,lossFunc):
     joint_dim=preds.shape[2]
     distance = lossFunc(preds,target) # B,num_joints,k
     distance=distance*mask
+
+    num_noneZero = torch.sum(mask)*joint_dim
+    if num_noneZero == 0:
+        num_noneZero=1
     
-    return torch.sum(distance)/(torch.sum(mask)*joint_dim)
+    return torch.sum(distance)/num_noneZero
 
 
 def interleave(x, size):
@@ -46,14 +50,11 @@ def compute_MeanSTD(x):
     k=h0.shape[1]
 
     dim=x.shape[2]
-    y,x=torch.meshgrid(torch.arange(0,dim),torch.arange(0,dim)).to(x.device)
+    y,x=torch.meshgrid(torch.arange(0,dim),torch.arange(0,dim))
     
 
-    Xs=x.flatten()[None,None,...]#.to(device)
-    Ys=y.flatten()[None,None,...]#to(device)
-    #Xs.requires_grad=False
-    #Ys.requires_grad=False
-
+    Xs=x.flatten()[None,None,...].to(h0.device)#.to(device)
+    Ys=y.flatten()[None,None,...].to(h0.device)#to(device)
 
     X0=torch.mul(h0.view(num_batch,k,-1),Xs)
     X_mean=torch.sum(X0,dim=-1)

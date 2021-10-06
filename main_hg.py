@@ -12,7 +12,7 @@ import torch.multiprocessing as mp
 from model import model_builder
 from config import *
 from dataloader import *
-from utils import interleave, de_interleave, loss_masked
+from utils import interleave, de_interleave, loss_masked, compute_MeanSTD
 
 
 def main(args):
@@ -149,10 +149,12 @@ def main_worker(gpu, ngpus_per_node, args, current_node_GPU_counts):
         
 
     if args.LossFunction=="L2":
-        lossFunction=nn.MSELoss(reduction='none')
+        lossFunction=torch.nn.MSELoss()
+        masked_lossFunc=torch.nn.MSELoss(reduction='none')
 
     if args.LossFunction=="L1":
-        lossFunction=torch.nn.L1Loss(reduction='none')
+        lossFunction=torch.nn.L1Loss()
+        masked_lossFunc=torch.nn.L1Loss(reduction='none')
 
 
     torch.backends.cudnn.benchmark = True
@@ -164,7 +166,7 @@ def main_worker(gpu, ngpus_per_node, args, current_node_GPU_counts):
         
     ########################## Main Loop ##########################
     
-    Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,optimizer,device,fp16_scaler, scheduler)
+    Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,masked_lossFunc, optimizer,device,fp16_scaler, scheduler)
     model_name="savedModel_E{}.pt".format(args.num_epoch)
     data={"model":(model.module.state_dict() if not args.paralelization_type=="N" else model.state_dict()) , "args":args,"optimizer":optimizer.state_dict()}
     torch.save(data, os.path.join(args.checkpoints_dir,model_name ))
@@ -176,7 +178,7 @@ def main_worker(gpu, ngpus_per_node, args, current_node_GPU_counts):
 
 ################################################ Functions #####################
 
-def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,optimizer,device,fp16_scaler, scheduler):
+def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,masked_lossFunc,optimizer,device,fp16_scaler, scheduler):
 
     thresholds = torch.tensor([1.4 , 4.7 , 1.7 , 5.8, 1.3, 5.6, 1.8, 5.9, 2.3, 4.8, 8, 8, 11.2, 12.8])[None,...].cuda(device, non_blocking=True) # (1,num_joints)    
     ms=0
@@ -253,7 +255,7 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,op
                 out_labeled = Normalize_depth(out_labeled,sizes=cubesize.cuda(device, non_blocking=True),coms=com,add_com=False)
 
                 loss_labeled = lossFunction(out_labeled, gt_uvd)
-                unlabeled_loss = loss_masked(psudo_labels, out_strong, confident_predictions, lossFunction)
+                unlabeled_loss = loss_masked(psudo_labels, out_strong, confident_predictions, masked_lossFunc)
 
 
                 loss = loss_labeled + args.unlabeled_weight * unlabeled_loss
@@ -273,7 +275,6 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,op
                         f.write(f"detected: {val}"+"\r\n")
                         f.close()
 
-            
             optimizer.zero_grad()
             
             if fp16_scaler is None:

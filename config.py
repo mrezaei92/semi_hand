@@ -5,7 +5,7 @@ def get_args_parser():
     parser = argparse.ArgumentParser(description='training')
 
     # Dataset
-    parser.add_argument('--model_name',default="resnet50", choices=('resnet50', 'resnet18','hglass1','hglass1_small'),type=str,help="which model to use")
+    parser.add_argument('--model_name',default="hglass1_small", choices=('resnet50', 'resnet18','hglass1','hglass1_small'),type=str,help="which model to use")
     
     parser.add_argument('--dataset',default="nyu", choices=('nyu', 'icvl','msra'),type=str,help="which dataset to use")
 
