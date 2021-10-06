@@ -80,3 +80,12 @@ def compute_MeanSTD(x):
     std=torch.sqrt(std)
 
     return (mean,std)
+
+
+def print_tensor(x):
+    # x should be a one-dimensional tensor
+    s=''
+    for i in range(x.shape[0]):
+        s=s+f"{i}|{x[i]:.3f} "
+        
+    return s

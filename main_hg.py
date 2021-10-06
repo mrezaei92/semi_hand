@@ -12,7 +12,7 @@ import torch.multiprocessing as mp
 from model import model_builder
 from config import *
 from dataloader import *
-from utils import interleave, de_interleave, loss_masked, compute_MeanSTD
+from utils import interleave, de_interleave, loss_masked, compute_MeanSTD, print_tensor
 
 
 def main(args):
@@ -77,7 +77,7 @@ def main_worker(gpu, ngpus_per_node, args, current_node_GPU_counts):
         args.batch_size = int(args.batch_size / current_node_GPU_counts)
         #args.num_workers = int((args.num_workers + ngpus_per_node - 1) / ngpus_per_node)
         
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device_IDs[gpu]])
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device_IDs[gpu]],find_unused_parameters=True)
         
         device = device_IDs[gpu]
 
@@ -166,7 +166,7 @@ def main_worker(gpu, ngpus_per_node, args, current_node_GPU_counts):
         
     ########################## Main Loop ##########################
     
-    Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,masked_lossFunc, optimizer,device,fp16_scaler, scheduler)
+    Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,masked_lossFunc, optimizer,device,fp16_scaler, scheduler, rank)
     model_name="savedModel_E{}.pt".format(args.num_epoch)
     data={"model":(model.module.state_dict() if not args.paralelization_type=="N" else model.state_dict()) , "args":args,"optimizer":optimizer.state_dict()}
     torch.save(data, os.path.join(args.checkpoints_dir,model_name ))
@@ -178,7 +178,7 @@ def main_worker(gpu, ngpus_per_node, args, current_node_GPU_counts):
 
 ################################################ Functions #####################
 
-def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,masked_lossFunc,optimizer,device,fp16_scaler, scheduler):
+def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,masked_lossFunc,optimizer,device,fp16_scaler, scheduler, rank):
 
     thresholds = torch.tensor([1.4 , 4.7 , 1.7 , 5.8, 1.3, 5.6, 1.8, 5.9, 2.3, 4.8, 8, 8, 11.2, 12.8])[None,...].cuda(device, non_blocking=True) # (1,num_joints)    
     ms=0
@@ -246,7 +246,7 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,ma
                     psudo_labels = Normalize_depth(psudo_labels,sizes=cube_size_strong.cuda(device, non_blocking=True),coms=com,add_com=False)
                     _, stds = compute_MeanSTD(heatmaps)
                     confident_predictions = (stds < thresholds).float()[...,None] #(B,num_joints,1)
-                    stats = (torch.sum(confident_predictions,dim=0)/confident_predictions.shape[0])[0]
+                    stats = (torch.sum(confident_predictions,dim=0)/confident_predictions.shape[0]).squeeze()
 
 
 
@@ -313,8 +313,8 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,ma
                 f.write(message+"\r\n")
                 f.close()
 
-
-        message=f"Epoch: {epoch+1} , Labeled Loss: {np.mean(running_loss):.3f}, Unlabled Loss: {np.mean(Unlabled_Loss):.3f}, Psudo_labelLoss: {np.mean(psudo_loss):.3f}, STD Psudo_labelLoss: {np.std(psudo_loss):.3f}, TrueStrong: {np.mean(true_strongloss):.3f}, Total Time: {(time.time()-start_time_iter2)/60:.2f} mins\nstats: {torch.mean(torch.stack(confidence_stats),dim=0):.2f}\n"
+        stats=print_tensor( torch.mean(torch.stack(confidence_stats),dim=0) )
+        message=f"Epoch: {epoch+1} , Labeled Loss: {np.mean(running_loss):.3f}, Unlabled Loss: {np.mean(Unlabled_Loss):.3f}, Psudo_labelLoss: {np.mean(psudo_loss):.3f}, STD Psudo_labelLoss: {np.std(psudo_loss):.3f}, TrueStrong: {np.mean(true_strongloss):.3f}, Total Time: {(time.time()-start_time_iter2)/60:.2f} mins\nstats: {stats}\n"
         print(message)
         f= open("log.txt","a+")
         f.write(message+"\r\n")
@@ -324,7 +324,7 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,ma
         scheduler.step()
 
         # Save the model
-        if ( args.paralelization_type!="DDP" or (args.paralelization_type=="DDP" and rank % current_node_GPU_counts == 0) ) and epoch%2==0 and epoch!=0:
+        if ( args.paralelization_type!="DDP" or (args.paralelization_type=="DDP" and rank == 0) ) and epoch%2==0 and epoch!=0:
             model_name="savedModel_E{}.pt".format(epoch+1)
             data={"model":(model.module.state_dict() if not args.paralelization_type=="N" else model.state_dict()) , "args":args,"optimizer":optimizer.state_dict()}
             torch.save(data, os.path.join(args.checkpoints_dir,model_name ))
