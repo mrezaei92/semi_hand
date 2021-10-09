@@ -244,9 +244,14 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,ma
                 with torch.no_grad():
                     psudo_labels = WeakToStrong(out_weak , M_weakToOrig.cuda(device, non_blocking=True), M.cuda(device, non_blocking=True), M_OrigToStrong.cuda(device, non_blocking=True), randomScale.cuda(device, non_blocking=True), randomComJitter.cuda(device, non_blocking=True), cube_size_strong.cuda(device, non_blocking=True))
                     psudo_labels = Normalize_depth(psudo_labels,sizes=cube_size_strong.cuda(device, non_blocking=True),coms=com,add_com=False)
-                    _, stds = compute_MeanSTD(heatmaps)
-                    confident_predictions = (stds < thresholds).float()[...,None] #(B,num_joints,1)
-                    stats = (torch.sum(confident_predictions,dim=0)/confident_predictions.shape[0]).squeeze()
+
+                    if args.confidence_thresholding:
+                        _, stds = compute_MeanSTD(heatmaps)
+                        confident_predictions = (stds < thresholds).float()[...,None] #(B,num_joints,1)
+                        stats = (torch.sum(confident_predictions,dim=0)/confident_predictions.shape[0]).squeeze()
+                    else:
+                        confident_predictions = torch.ones(psudo_labels.shape[0],psudo_labels.shape[1],1).cuda(device, non_blocking=True)
+                        stats=1
 
 
 
@@ -313,7 +318,7 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,ma
                 f.write(message+"\r\n")
                 f.close()
 
-        stats=print_tensor( torch.mean(torch.stack(confidence_stats),dim=0) )
+        stats=( print_tensor( torch.mean(torch.stack(confidence_stats),dim=0) ) if args.confidence_thresholding else 1)
         message=f"Epoch: {epoch+1} , Labeled Loss: {np.mean(running_loss):.3f}, Unlabled Loss: {np.mean(Unlabled_Loss):.3f}, Psudo_labelLoss: {np.mean(psudo_loss):.3f}, STD Psudo_labelLoss: {np.std(psudo_loss):.3f}, TrueStrong: {np.mean(true_strongloss):.3f}, Total Time: {(time.time()-start_time_iter2)/60:.2f} mins\nstats: {stats}\n"
         print(message)
         f= open("log.txt","a+")
