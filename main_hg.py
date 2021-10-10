@@ -193,6 +193,9 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,ma
     for epoch in range(args.num_epoch):
         running_loss , psudo_loss, Unlabled_Loss, true_strongloss , confidence_stats= [],[], [], [], []
 
+        unlabeled_weight = Signal_Annealing(epoch/args.num_epoch, args.unlabeled_weight_start, args.unlabeled_weight_end, args.TSA)
+
+
     
         if args.paralelization_type=="DDP":
             trainloader_labeled.sampler.set_epoch(epoch+1)
@@ -263,7 +266,7 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,ma
                 unlabeled_loss = loss_masked(psudo_labels, out_strong, confident_predictions, masked_lossFunc)
 
 
-                loss = loss_labeled + args.unlabeled_weight * unlabeled_loss
+                loss = loss_labeled + unlabeled_weight * unlabeled_loss
 
                 with torch.no_grad():
                     strong_ = WeakToStrong(gt2Dcrop_weak.cuda(device, non_blocking=True) , M_weakToOrig.cuda(device, non_blocking=True), M.cuda(device, non_blocking=True), M_OrigToStrong.cuda(device, non_blocking=True), randomScale.cuda(device, non_blocking=True), randomComJitter.cuda(device, non_blocking=True), cube_size_strong.cuda(device, non_blocking=True))
@@ -329,7 +332,7 @@ def Train(model,trainloader_labeled, trainloader_unlabeled, args,lossFunction,ma
         scheduler.step()
 
         # Save the model
-        if ( args.paralelization_type!="DDP" or (args.paralelization_type=="DDP" and rank == 0) ) and epoch%2==0 and epoch!=0:
+        if ( args.paralelization_type!="DDP" or (args.paralelization_type=="DDP" and rank == 0) ) and (args.num_epoch-epoch)<=100 and epoch!=0:
             model_name="savedModel_E{}.pt".format(epoch+1)
             data={"model":(model.module.state_dict() if not args.paralelization_type=="N" else model.state_dict()) , "args":args,"optimizer":optimizer.state_dict()}
             torch.save(data, os.path.join(args.checkpoints_dir,model_name ))

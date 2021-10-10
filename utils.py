@@ -89,3 +89,34 @@ def print_tensor(x):
         s=s+f"{i}|{x[i]:.3f} "
         
     return s
+
+
+
+def Signal_Annealing(progress,start,end,typee="cosine"):
+    # progress is a number starting from 0 to reach 1 in the final step
+    # start and end are starting and the end value respectively
+    if typee == "cosine":
+        return start + 0.5*(1 - np.cos(np.pi*progress) ) * (end-start)
+    
+    elif typee == "linear":
+        return start + progress * (end-start)
+    
+    elif typee == "exp":
+        return start + np.exp((progress-1)*5) * (end-start)
+    
+    elif typee == "log":
+        return start + (1-np.exp((-progress)*5)) * (end-start)
+
+    else:
+        raise NotImplementedError
+        
+## Use case
+# total=500
+# start=0.1
+# end=0.8
+# x=[Signal_Annealing(i/total,start,end,"cosine") for i in range(total)]
+# y=[Signal_Annealing(i/total,start,end,"linear") for i in range(total)]
+# z=[Signal_Annealing(i/total,start,end,"exp") for i in range(total)]
+# plt.plot(x)
+# plt.plot(y)
+# plt.plot(z)
