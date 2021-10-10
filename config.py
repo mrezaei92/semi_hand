@@ -119,8 +119,12 @@ def get_args_parser():
     ################# Custom
 
     parser.add_argument('--mu', default=3, type=int, help="The ratio of batch size of unlabled to the labled")
-    parser.add_argument('--unlabeled_weight', default=1e-1, type=float, help="weight of the unlabled loss")
+    parser.add_argument('--unlabeled_weight_start', default=1e-1, type=float, help="the initial weight of the unlabled loss")
+    parser.add_argument('--unlabeled_weight_end', default=8e-1, type=float, help="the final weight of the unlabled loss")
+    parser.add_argument('--TSA',default="exp", choices=('exp', 'linear','cosine','log'),type=str,help="The type of Signal Annealing")
+
     parser.add_argument('--confidence_thresholding',default=1, type=int, help="wether to do apply confidence_thresholding")
+
 
     
     return parser
